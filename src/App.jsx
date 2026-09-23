@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import Login from "./pages/Login";
+import Login from "./Pages/Login";
+import Products from "./Pages/Products";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -20,7 +21,7 @@ function App() {
         path="/products"
         element={
           <ProtectedRoute>
-            <div>Products Page</div>
+            <Products />
           </ProtectedRoute>
         }
       />
