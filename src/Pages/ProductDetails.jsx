@@ -16,6 +16,7 @@ import {
   getLocalProductById,
   getProductOverride,
   markProductDeleted,
+  removeLocalProduct,
   isProductDeleted,
 } from "../utils/productStorage";
 
@@ -34,11 +35,13 @@ function ProductDetails() {
         setLoading(true);
         setError("");
 
+        // Check if product was deleted locally
         if (isProductDeleted(id)) {
           setError("Product not found.");
           return;
         }
 
+        // First check locally created product
         const localProduct =
           getLocalProductById(id);
 
@@ -47,20 +50,27 @@ function ProductDetails() {
           return;
         }
 
+        // Otherwise get product from API
         const data = await getProductById(id);
 
+        // Check if product has local edits
         const override =
           getProductOverride(id);
 
-        setProduct(
-          override
-            ? {
-                ...data,
-                ...override,
-              }
-            : data
-        );
+        if (override) {
+          setProduct({
+            ...data,
+            ...override,
+          });
+        } else {
+          setProduct(data);
+        }
       } catch (error) {
+        console.error(
+          "Product details error:",
+          error
+        );
+
         setError("Product not found.");
       } finally {
         setLoading(false);
@@ -71,29 +81,51 @@ function ProductDetails() {
   }, [id]);
 
   const handleDelete = async () => {
+    if (deleting) return;
+
     const confirmed = window.confirm(
       "Are you sure you want to delete this product?"
     );
 
-    if (!confirmed || deleting) {
+    if (!confirmed) {
       return;
     }
 
     try {
       setDeleting(true);
+      setError("");
 
-      await deleteProduct(id);
+      /*
+        Try deleting from API.
+        DummyJSON mutations are simulated,
+        so local deletion is also required.
+      */
+      try {
+        await deleteProduct(id);
+      } catch (apiError) {
+        console.warn(
+          "API delete failed. Applying local delete.",
+          apiError
+        );
+      }
 
+      // Remove from local products if it was locally created
+      removeLocalProduct(id);
+
+      // Mark server product as deleted locally
       markProductDeleted(id);
 
+      // Go back to products
       navigate("/products", {
         replace: true,
       });
     } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Failed to delete product."
+      console.error(
+        "Delete error:",
+        error
       );
+
+      setError("Failed to delete product.");
       setDeleting(false);
     }
   };
@@ -123,7 +155,7 @@ function ProductDetails() {
           </h2>
 
           <p className="text-slate-500">
-            The product does not exist.
+            {error || "The product does not exist."}
           </p>
 
           <Link
@@ -151,6 +183,7 @@ function ProductDetails() {
 
         <div className="mt-5 rounded-2xl bg-white p-6 shadow-sm">
           <div className="grid gap-8 md:grid-cols-2">
+            {/* Images */}
             <div>
               <img
                 src={
@@ -175,6 +208,7 @@ function ProductDetails() {
               </div>
             </div>
 
+            {/* Product information */}
             <div>
               <p className="text-sm capitalize text-slate-500">
                 {product.category}
@@ -194,7 +228,7 @@ function ProductDetails() {
                 </p>
 
                 <p>
-                  ⭐ {product.rating}
+                  ⭐ {product.rating || "N/A"}
                 </p>
 
                 <p>
@@ -207,27 +241,30 @@ function ProductDetails() {
                 </p>
               </div>
 
+              {/* Buttons */}
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   to={`/products/${product.id}/edit`}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-white hover:bg-slate-800"
+                  className="rounded-lg bg-slate-900 px-5 py-2.5 font-medium text-white hover:bg-slate-800"
                 >
-                  Edit
+                  Edit Product
                 </Link>
 
                 <button
+                  type="button"
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-red-500 px-5 py-2.5 font-medium text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {deleting
                     ? "Deleting..."
-                    : "Delete"}
+                    : "Delete Product"}
                 </button>
               </div>
             </div>
           </div>
 
+          {/* Reviews */}
           <div className="mt-10 border-t pt-6">
             <h2 className="text-xl font-bold">
               Reviews

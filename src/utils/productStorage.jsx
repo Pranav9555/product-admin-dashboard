@@ -43,6 +43,12 @@ export const saveProductUpdate = (id, product) => {
   );
 };
 
+export const getProductOverride = (id) => {
+  const updates = getProductUpdates();
+
+  return updates[String(id)] || null;
+};
+
 export const getDeletedProductIds = () => {
   try {
     return JSON.parse(
@@ -56,8 +62,10 @@ export const getDeletedProductIds = () => {
 export const markProductDeleted = (id) => {
   const deletedIds = getDeletedProductIds();
 
-  if (!deletedIds.includes(String(id))) {
-    deletedIds.push(String(id));
+  const idString = String(id);
+
+  if (!deletedIds.includes(idString)) {
+    deletedIds.push(idString);
   }
 
   localStorage.setItem(
@@ -70,10 +78,34 @@ export const isProductDeleted = (id) => {
   return getDeletedProductIds().includes(String(id));
 };
 
-export const getProductOverride = (id) => {
-  const updates = getProductUpdates();
+export const removeLocalProduct = (id) => {
+  const products = getLocalProducts();
 
-  return updates[String(id)] || null;
+  const filteredProducts = products.filter(
+    (product) => String(product.id) !== String(id)
+  );
+
+  saveLocalProducts(filteredProducts);
+};
+
+export const updateLocalProduct = (
+  id,
+  updatedProduct
+) => {
+  const products = getLocalProducts();
+
+  const updatedProducts = products.map(
+    (product) =>
+      String(product.id) === String(id)
+        ? {
+            ...product,
+            ...updatedProduct,
+            _local: true,
+          }
+        : product
+  );
+
+  saveLocalProducts(updatedProducts);
 };
 
 export const getLocalProductById = (id) => {
@@ -81,7 +113,8 @@ export const getLocalProductById = (id) => {
 
   return (
     products.find(
-      (product) => String(product.id) === String(id)
+      (product) =>
+        String(product.id) === String(id)
     ) || null
   );
 };
