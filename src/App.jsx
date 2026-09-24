@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Login from "./Pages/Login";
+import "./App.css";
 import Products from "./Pages/Products";
 
 function ProtectedRoute({ children }) {

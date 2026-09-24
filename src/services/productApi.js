@@ -8,12 +8,17 @@ export const getProducts = async (params = {}) => {
   return response.data;
 };
 
-export const searchProducts = async (query, params = {}) => {
+export const searchProducts = async (
+  query,
+  params = {},
+  signal
+) => {
   const response = await api.get("/products/search", {
     params: {
       q: query,
       ...params,
     },
+    signal,
   });
 
   return response.data;
