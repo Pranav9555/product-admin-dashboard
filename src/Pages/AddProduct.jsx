@@ -5,43 +5,45 @@ import Navbar from "../components/Navbar";
 import ProductForm from "../components/ProductForm";
 import { addProduct } from "../services/productApi";
 
+import {
+  getLocalProducts,
+  saveLocalProducts,
+} from "../utils/productStorage";
+
 function AddProduct() {
   const navigate = useNavigate();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (product) => {
     if (loading) return;
 
     try {
       setLoading(true);
+      setError("");
 
-      const created =
-        await addProduct(product);
+      const created = await addProduct(product);
 
-      // DummyJSON doesn't permanently save this.
-      // Keep the created product locally for demo.
-      const localProducts = JSON.parse(
-        localStorage.getItem(
-          "localProducts"
-        ) || "[]"
-      );
+      const localProducts = getLocalProducts();
 
-      localStorage.setItem(
-        "localProducts",
-        JSON.stringify([
-          ...localProducts,
-          {
-            ...created,
-            _local: true,
-          },
-        ])
-      );
+      const localProduct = {
+        ...created,
+        ...product,
+        _local: true,
+      };
+
+      saveLocalProducts([
+        ...localProducts,
+        localProduct,
+      ]);
 
       navigate(`/products/${created.id}`);
     } catch (error) {
-      alert("Failed to add product.");
+      setError(
+        error.response?.data?.message ||
+          "Failed to add product."
+      );
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ function AddProduct() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <Link
           to="/products"
-          className="text-sm text-slate-600"
+          className="text-sm text-slate-600 hover:text-slate-900"
         >
           ← Back to Products
         </Link>
@@ -63,6 +65,12 @@ function AddProduct() {
           <h1 className="mb-6 text-2xl font-bold">
             Add Product
           </h1>
+
+          {error && (
+            <div className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
 
           <ProductForm
             onSubmit={handleSubmit}

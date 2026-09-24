@@ -12,28 +12,44 @@ function Login() {
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (loading) return;
+  if (loading) return;
 
-    setError("");
-    setLoading(true);
+  if (!username.trim() || !password.trim()) {
+    setError("Username and password are required.");
+    return;
+  }
 
-    try {
-      const data = await loginUser(username, password);
+  setError("");
+  setLoading(true);
 
-      localStorage.setItem("token", data.accessToken  || data.token);
+  try {
+    const data = await loginUser(
+      username.trim(),
+      password
+    );
 
-      navigate("/products");
-    } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Invalid username or password"
-      );
-    } finally {
-      setLoading(false);
+    const token = data.accessToken || data.token;
+
+    if (!token) {
+      throw new Error("Authentication token missing.");
     }
-  };
+
+    localStorage.setItem("token", token);
+
+    navigate("/products", {
+      replace: true,
+    });
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        "Invalid username or password."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">

@@ -19,6 +19,12 @@ import {
   getProductsByCategory,
 } from "../services/productApi";
 
+import {
+  getLocalProducts,
+  getProductUpdates,
+  getDeletedProductIds,
+} from "../utils/productStorage";
+
 function Products() {
 
   const navigate = useNavigate();
@@ -26,8 +32,6 @@ function Products() {
   const [categories, setCategories] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [categoryLoading, setCategoryLoading] =
-    useState(true);
 
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
@@ -86,6 +90,38 @@ function Products() {
     };
   };
 
+  const applyLocalChanges = (serverProducts) => {
+  const localProducts = getLocalProducts();
+  const updates = getProductUpdates();
+  const deletedIds = getDeletedProductIds();
+
+  const deletedSet = new Set(
+    deletedIds.map(String)
+  );
+
+  const updatedProducts = serverProducts
+    .filter(
+      (product) =>
+        !deletedSet.has(String(product.id))
+    )
+    .map((product) => {
+      const update =
+        updates[String(product.id)];
+
+      return update
+        ? {
+            ...product,
+            ...update,
+          }
+        : product;
+    });
+
+  return {
+    products: updatedProducts,
+    localProducts,
+  };
+};
+
   const fetchProducts = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -138,8 +174,30 @@ function Products() {
         return;
       }
 
-      setProducts(data.products || []);
-      setTotal(data.total || 0);
+    const localChanges =
+  applyLocalChanges(data.products || []);
+
+let finalProducts =
+  localChanges.products;
+
+const shouldIncludeLocalProducts =
+  !search.trim() && !category;
+
+if (shouldIncludeLocalProducts) {
+  finalProducts = [
+    ...localChanges.localProducts,
+    ...finalProducts,
+  ];
+}
+
+setProducts(finalProducts);
+setTotal(
+  data.total +
+    (shouldIncludeLocalProducts
+      ? localChanges.localProducts.length
+      : 0)
+);
+
     } catch (error) {
       if (
         error.name === "CanceledError" ||
@@ -187,21 +245,17 @@ function Products() {
 
   // Fetch categories
   const fetchCategories = async () => {
-    try {
-      setCategoryLoading(true);
+  try {
+    const data = await getCategories();
 
-      const data = await getCategories();
-
-      setCategories(data || []);
-    } catch (error) {
-      console.error(
-        "Failed to load categories",
-        error
-      );
-    } finally {
-      setCategoryLoading(false);
-    }
-  };
+    setCategories(data || []);
+  } catch (error) {
+    console.error(
+      "Failed to load categories",
+      error
+    );
+  }
+};
 
   useEffect(() => {
     fetchCategories();

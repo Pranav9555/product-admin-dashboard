@@ -13,28 +13,50 @@ import {
   updateProduct,
 } from "../services/productApi";
 
+import {
+  getLocalProductById,
+  getProductOverride,
+  saveProductUpdate,
+} from "../utils/productStorage";
+
 function EditProduct() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [product, setProduct] =
-    useState(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [saving, setSaving] =
-    useState(false);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadProduct = async () => {
       try {
-        const data =
-          await getProductById(id);
+        setLoading(true);
+        setError("");
 
-        setProduct(data);
+        const localProduct =
+          getLocalProductById(id);
+
+        if (localProduct) {
+          setProduct(localProduct);
+          return;
+        }
+
+        const data = await getProductById(id);
+
+        const localOverride =
+          getProductOverride(id);
+
+        setProduct(
+          localOverride
+            ? {
+                ...data,
+                ...localOverride,
+              }
+            : data
+        );
       } catch (error) {
-        setProduct(null);
+        setError("Product not found.");
       } finally {
         setLoading(false);
       }
@@ -48,33 +70,24 @@ function EditProduct() {
 
     try {
       setSaving(true);
+      setError("");
 
-      const updated =
-        await updateProduct(
-          id,
-          updatedProduct
-        );
-
-      // DummyJSON does not persist updates.
-      const updates = JSON.parse(
-        localStorage.getItem(
-          "productUpdates"
-        ) || "{}"
+      const updated = await updateProduct(
+        id,
+        updatedProduct
       );
 
-      updates[id] = {
+      saveProductUpdate(id, {
         ...updated,
-        _local: true,
-      };
-
-      localStorage.setItem(
-        "productUpdates",
-        JSON.stringify(updates)
-      );
+        ...updatedProduct,
+      });
 
       navigate(`/products/${id}`);
     } catch (error) {
-      alert("Failed to update product.");
+      setError(
+        error.response?.data?.message ||
+          "Failed to update product."
+      );
     } finally {
       setSaving(false);
     }
@@ -86,19 +99,34 @@ function EditProduct() {
         <Navbar />
 
         <div className="flex min-h-[80vh] items-center justify-center">
-          Loading...
+          <p className="text-slate-500">
+            Loading product...
+          </p>
         </div>
       </>
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <>
         <Navbar />
 
-        <div className="flex min-h-[80vh] items-center justify-center">
-          Product not found.
+        <div className="flex min-h-[80vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <h2 className="text-2xl font-bold">
+            Product Not Found
+          </h2>
+
+          <p className="text-slate-500">
+            {error || "The product does not exist."}
+          </p>
+
+          <Link
+            to="/products"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-white"
+          >
+            Back to Products
+          </Link>
         </div>
       </>
     );
@@ -111,7 +139,7 @@ function EditProduct() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <Link
           to={`/products/${id}`}
-          className="text-sm text-slate-600"
+          className="text-sm text-slate-600 hover:text-slate-900"
         >
           ← Back to Product
         </Link>
@@ -120,6 +148,12 @@ function EditProduct() {
           <h1 className="mb-6 text-2xl font-bold">
             Edit Product
           </h1>
+
+          {error && (
+            <div className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
 
           <ProductForm
             initialData={product}

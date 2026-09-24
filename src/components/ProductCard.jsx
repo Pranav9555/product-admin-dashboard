@@ -8,17 +8,20 @@ function ProductCard({ product }) {
       onClick={() =>
         navigate(`/products/${product.id}`)
       }
-      className="cursor-pointer rounded-xl border bg-white p-4 shadow-sm hover:shadow-md md:hidden"
+      className="cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition hover:shadow-md"
     >
       <div className="flex gap-4">
         <img
-          src={product.thumbnail}
+          src={
+            product.thumbnail ||
+            product.images?.[0]
+          }
           alt={product.title}
-          className="h-20 w-20 rounded-lg object-cover"
+          className="h-20 w-20 shrink-0 rounded-lg object-cover"
         />
 
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-slate-900">
+          <h3 className="truncate font-semibold text-slate-900">
             {product.title}
           </h3>
 
@@ -33,8 +36,13 @@ function ProductCard({ product }) {
       </div>
 
       <div className="mt-4 flex justify-between border-t pt-3 text-sm text-slate-600">
-        <span>⭐ {product.rating}</span>
-        <span>Stock: {product.stock}</span>
+        <span>
+          ⭐ {Number(product.rating).toFixed(1)}
+        </span>
+
+        <span>
+          Stock: {product.stock}
+        </span>
       </div>
     </div>
   );

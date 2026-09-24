@@ -6,26 +6,27 @@ import {
 } from "react-router-dom";
 
 import Navbar from "../components/Navbar";
+
 import {
   getProductById,
   deleteProduct,
 } from "../services/productApi";
 
+import {
+  getLocalProductById,
+  getProductOverride,
+  markProductDeleted,
+  isProductDeleted,
+} from "../utils/productStorage";
+
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [product, setProduct] =
-    useState(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const [deleting, setDeleting] =
-    useState(false);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -33,10 +34,32 @@ function ProductDetails() {
         setLoading(true);
         setError("");
 
-        const data =
-          await getProductById(id);
+        if (isProductDeleted(id)) {
+          setError("Product not found.");
+          return;
+        }
 
-        setProduct(data);
+        const localProduct =
+          getLocalProductById(id);
+
+        if (localProduct) {
+          setProduct(localProduct);
+          return;
+        }
+
+        const data = await getProductById(id);
+
+        const override =
+          getProductOverride(id);
+
+        setProduct(
+          override
+            ? {
+                ...data,
+                ...override,
+              }
+            : data
+        );
       } catch (error) {
         setError("Product not found.");
       } finally {
@@ -52,7 +75,7 @@ function ProductDetails() {
       "Are you sure you want to delete this product?"
     );
 
-    if (!confirmed) {
+    if (!confirmed || deleting) {
       return;
     }
 
@@ -61,10 +84,16 @@ function ProductDetails() {
 
       await deleteProduct(id);
 
-      navigate("/products");
+      markProductDeleted(id);
+
+      navigate("/products", {
+        replace: true,
+      });
     } catch (error) {
-      alert("Failed to delete product.");
-    } finally {
+      setError(
+        error.response?.data?.message ||
+          "Failed to delete product."
+      );
       setDeleting(false);
     }
   };
@@ -75,7 +104,9 @@ function ProductDetails() {
         <Navbar />
 
         <div className="flex min-h-[80vh] items-center justify-center">
-          Loading product...
+          <p className="text-slate-500">
+            Loading product...
+          </p>
         </div>
       </>
     );
@@ -86,7 +117,7 @@ function ProductDetails() {
       <>
         <Navbar />
 
-        <div className="flex min-h-[80vh] flex-col items-center justify-center gap-4">
+        <div className="flex min-h-[80vh] flex-col items-center justify-center gap-4 px-4 text-center">
           <h2 className="text-2xl font-bold">
             Product Not Found
           </h2>
@@ -111,7 +142,6 @@ function ProductDetails() {
       <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 py-8">
-
         <Link
           to="/products"
           className="text-sm text-slate-600 hover:text-slate-900"
@@ -120,10 +150,7 @@ function ProductDetails() {
         </Link>
 
         <div className="mt-5 rounded-2xl bg-white p-6 shadow-sm">
-
           <div className="grid gap-8 md:grid-cols-2">
-
-            {/* Images */}
             <div>
               <img
                 src={
@@ -131,7 +158,7 @@ function ProductDetails() {
                   product.thumbnail
                 }
                 alt={product.title}
-                className="h-80 w-full rounded-xl object-contain bg-slate-50"
+                className="h-80 w-full rounded-xl bg-slate-50 object-contain"
               />
 
               <div className="mt-4 flex gap-3 overflow-x-auto">
@@ -148,7 +175,6 @@ function ProductDetails() {
               </div>
             </div>
 
-            {/* Details */}
             <div>
               <p className="text-sm capitalize text-slate-500">
                 {product.category}
@@ -181,10 +207,10 @@ function ProductDetails() {
                 </p>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   to={`/products/${product.id}/edit`}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-white"
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-white hover:bg-slate-800"
                 >
                   Edit
                 </Link>
@@ -192,7 +218,7 @@ function ProductDetails() {
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="rounded-lg bg-red-500 px-4 py-2 text-white disabled:opacity-50"
+                  className="rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {deleting
                     ? "Deleting..."
@@ -202,7 +228,6 @@ function ProductDetails() {
             </div>
           </div>
 
-          {/* Reviews */}
           <div className="mt-10 border-t pt-6">
             <h2 className="text-xl font-bold">
               Reviews
@@ -216,7 +241,7 @@ function ProductDetails() {
                       key={index}
                       className="rounded-lg bg-slate-50 p-4"
                     >
-                      <div className="flex justify-between">
+                      <div className="flex justify-between gap-4">
                         <p className="font-medium">
                           {review.reviewerName ||
                             review.reviewerEmail ||
@@ -241,7 +266,6 @@ function ProductDetails() {
               )}
             </div>
           </div>
-
         </div>
       </main>
     </div>

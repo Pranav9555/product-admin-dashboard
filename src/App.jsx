@@ -1,16 +1,26 @@
-import { Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
+import {
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
+
+import Login from "./pages/Login";
+import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
-import EditProduct from "./pages/EditProduct";
 import AddProduct from "./pages/AddProduct";
-import Login from "./Pages/Login";
-import Products from "./Pages/Products";
+import EditProduct from "./pages/EditProduct";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   return children;
@@ -19,7 +29,20 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/login"
+        element={<Login />}
+      />
+
+      <Route
+        path="/"
+        element={
+          <Navigate
+            to="/login"
+            replace
+          />
+        }
+      />
 
       <Route
         path="/products"
@@ -30,18 +53,6 @@ function App() {
         }
       />
 
-      <Route
-        path="/products/:id"
-        element={
-          <ProtectedRoute>
-            <ProductDetails />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="/" element={<Navigate to="/login" replace />} />
-
-      <Route path="*" element={<Navigate to="/login" replace />} />
       <Route
         path="/products/add"
         element={
@@ -57,6 +68,25 @@ function App() {
           <ProtectedRoute>
             <EditProduct />
           </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/products/:id"
+        element={
+          <ProtectedRoute>
+            <ProductDetails />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to="/login"
+            replace
+          />
         }
       />
     </Routes>

@@ -28,44 +28,48 @@ function ProductForm({
     }));
   };
 
-  const validate = () => {
-    const newErrors = {};
+ const validate = () => {
+  const newErrors = {};
 
-    if (!form.title.trim()) {
-      newErrors.title =
-        "Title is required.";
-    }
+  if (!form.title.trim()) {
+    newErrors.title = "Title is required.";
+  } else if (form.title.trim().length < 3) {
+    newErrors.title =
+      "Title must be at least 3 characters.";
+  }
 
-    if (!form.description.trim()) {
-      newErrors.description =
-        "Description is required.";
-    }
+  if (!form.description.trim()) {
+    newErrors.description =
+      "Description is required.";
+  }
 
-    if (
-      form.price === "" ||
-      Number(form.price) < 0
-    ) {
-      newErrors.price =
-        "Price must be 0 or greater.";
-    }
+  if (
+    form.price === "" ||
+    !Number.isFinite(Number(form.price)) ||
+    Number(form.price) < 0
+  ) {
+    newErrors.price =
+      "Price must be 0 or greater.";
+  }
 
-    if (
-      form.stock === "" ||
-      Number(form.stock) < 0
-    ) {
-      newErrors.stock =
-        "Stock must be 0 or greater.";
-    }
+  if (
+    form.stock === "" ||
+    !Number.isInteger(Number(form.stock)) ||
+    Number(form.stock) < 0
+  ) {
+    newErrors.stock =
+      "Stock must be a whole number 0 or greater.";
+  }
 
-    if (!form.category.trim()) {
-      newErrors.category =
-        "Category is required.";
-    }
+  if (!form.category.trim()) {
+    newErrors.category =
+      "Category is required.";
+  }
 
-    setErrors(newErrors);
+  setErrors(newErrors);
 
-    return Object.keys(newErrors).length === 0;
-  };
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = (e) => {
     e.preventDefault();
