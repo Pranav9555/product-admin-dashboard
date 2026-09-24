@@ -1,8 +1,9 @@
 import api from "./axios";
 
-export const getProducts = async (params = {}) => {
+export const getProducts = async (params = {}, signal) => {
   const response = await api.get("/products", {
     params,
+    signal,
   });
 
   return response.data;
@@ -30,8 +31,26 @@ export const getCategories = async () => {
   return response.data;
 };
 
-export const getProductById = async (id) => {
-  const response = await api.get(`/products/${id}`);
+export const getProductsByCategory = async (
+  category,
+  params = {},
+  signal
+) => {
+  const response = await api.get(
+    `/products/category/${category}`,
+    {
+      params,
+      signal,
+    }
+  );
+
+  return response.data;
+};
+
+export const getProductById = async (id, signal) => {
+  const response = await api.get(`/products/${id}`, {
+    signal,
+  });
 
   return response.data;
 };
@@ -43,7 +62,10 @@ export const addProduct = async (product) => {
 };
 
 export const updateProduct = async (id, product) => {
-  const response = await api.put(`/products/${id}`, product);
+  const response = await api.put(
+    `/products/${id}`,
+    product
+  );
 
   return response.data;
 };

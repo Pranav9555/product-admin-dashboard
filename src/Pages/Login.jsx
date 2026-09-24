@@ -22,7 +22,7 @@ function Login() {
     try {
       const data = await loginUser(username, password);
 
-      localStorage.setItem("token", data.accessToken);
+      localStorage.setItem("token", data.accessToken  || data.token);
 
       navigate("/products");
     } catch (error) {

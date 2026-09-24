@@ -1,40 +1,92 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import SearchBar from "../components/SearchBar";
+import Filters from "../components/Filters";
+import Pagination from "../components/Pagination";
+import ProductTable from "../components/ProductTable";
+import ProductCard from "../components/ProductCard";
+
 import {
   getProducts,
   searchProducts,
+  getCategories,
+  getProductsByCategory,
 } from "../services/productApi";
 
 function Products() {
+
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [categoryLoading, setCategoryLoading] =
+    useState(true);
+
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] =
+    useSearchParams();
 
   const abortControllerRef = useRef(null);
 
   const search = searchParams.get("search") || "";
+  const category = searchParams.get("category") || "";
+  const sort = searchParams.get("sort") || "";
 
-  const [searchInput, setSearchInput] = useState(search);
+  const [searchInput, setSearchInput] =
+    useState(search);
 
-  const page = Math.max(
-    1,
-    parseInt(searchParams.get("page")) || 1
-  );
+  const rawPage =
+    parseInt(searchParams.get("page")) || 1;
+
+  const page = Math.max(1, rawPage);
+
+  const requestedLimit =
+    parseInt(searchParams.get("limit")) || 20;
 
   const limit = [10, 20, 50].includes(
-    parseInt(searchParams.get("limit"))
+    requestedLimit
   )
-    ? parseInt(searchParams.get("limit"))
+    ? requestedLimit
     : 20;
 
   const skip = (page - 1) * limit;
 
-  // Fetch products
+  const getSortParams = () => {
+    if (!sort) {
+      return {};
+    }
+
+    const allowed = [
+      "price-asc",
+      "price-desc",
+      "rating-asc",
+      "rating-desc",
+      "title-asc",
+      "title-desc",
+    ];
+
+    if (!allowed.includes(sort)) {
+      return {};
+    }
+
+    const [sortBy, order] = sort.split("-");
+
+    return {
+      sortBy,
+      order,
+    };
+  };
+
   const fetchProducts = async () => {
-    // Cancel previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -47,6 +99,8 @@ function Products() {
       setLoading(true);
       setError("");
 
+      const sortParams = getSortParams();
+
       let data;
 
       if (search.trim()) {
@@ -55,23 +109,37 @@ function Products() {
           {
             limit,
             skip,
+            ...sortParams,
+          },
+          controller.signal
+        );
+      } else if (category) {
+        data = await getProductsByCategory(
+          category,
+          {
+            limit,
+            skip,
+            ...sortParams,
           },
           controller.signal
         );
       } else {
-        data = await getProducts({
-          limit,
-          skip,
-        });
+        data = await getProducts(
+          {
+            limit,
+            skip,
+            ...sortParams,
+          },
+          controller.signal
+        );
       }
 
-      // Don't update state if request was cancelled
       if (controller.signal.aborted) {
         return;
       }
 
-      setProducts(data.products);
-      setTotal(data.total);
+      setProducts(data.products || []);
+      setTotal(data.total || 0);
     } catch (error) {
       if (
         error.name === "CanceledError" ||
@@ -88,19 +156,26 @@ function Products() {
     }
   };
 
-  // Debounce search input
+  // Search debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchInput !== search) {
-        const params = new URLSearchParams(searchParams);
+        const params = new URLSearchParams(
+          searchParams
+        );
 
         if (searchInput.trim()) {
-          params.set("search", searchInput.trim());
+          params.set(
+            "search",
+            searchInput.trim()
+          );
+
+          // Search and category are not combined.
+          params.delete("category");
         } else {
           params.delete("search");
         }
 
-        // Search always starts from page 1
         params.set("page", "1");
 
         setSearchParams(params);
@@ -110,259 +185,257 @@ function Products() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Fetch whenever page, limit, or search changes
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      setCategoryLoading(true);
+
+      const data = await getCategories();
+
+      setCategories(data || []);
+    } catch (error) {
+      console.error(
+        "Failed to load categories",
+        error
+      );
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Fetch products
   useEffect(() => {
     fetchProducts();
-  }, [page, limit, search]);
+  }, [
+    page,
+    limit,
+    search,
+    category,
+    sort,
+  ]);
 
-  // Pagination calculations
+  // Validate URL page after total is known
+  useEffect(() => {
+    const totalPages = Math.ceil(total / limit);
+
+    if (
+      totalPages > 0 &&
+      page > totalPages
+    ) {
+      const params = new URLSearchParams(
+        searchParams
+      );
+
+      params.set(
+        "page",
+        String(totalPages)
+      );
+
+      setSearchParams(params, {
+        replace: true,
+      });
+    }
+  }, [total, limit, page]);
+
+  const updateParam = (
+    key,
+    value,
+    resetPage = true
+  ) => {
+    const params = new URLSearchParams(
+      searchParams
+    );
+
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+
+    if (resetPage) {
+      params.set("page", "1");
+    }
+
+    setSearchParams(params);
+  };
+
   const totalPages = Math.ceil(total / limit);
 
-  const start = total === 0 ? 0 : skip + 1;
+  const start =
+    total === 0 ? 0 : skip + 1;
 
-  const end = Math.min(skip + limit, total);
-
-  // Change page while preserving search
-  const changePage = (newPage) => {
-    const params = new URLSearchParams(searchParams);
-
-    params.set("page", newPage);
-    params.set("limit", limit);
-
-    setSearchParams(params);
-  };
-
-  // Change page size while preserving search
-  const changeLimit = (newLimit) => {
-    const params = new URLSearchParams(searchParams);
-
-    params.set("page", "1");
-    params.set("limit", newLimit);
-
-    setSearchParams(params);
-  };
+  const end = Math.min(
+    skip + limit,
+    total
+  );
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-slate-500">
-          Loading products...
-        </p>
-      </div>
+      <>
+        <Navbar />
+
+        <div className="flex min-h-[80vh] items-center justify-center">
+          <p className="text-slate-500">
+            Loading products...
+          </p>
+        </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p className="text-red-500">{error}</p>
+      <>
+        <Navbar />
 
-        <button
-          onClick={fetchProducts}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-white"
-        >
-          Retry
-        </button>
-      </div>
+        <div className="flex min-h-[80vh] flex-col items-center justify-center gap-4">
+          <p className="text-red-500">
+            {error}
+          </p>
+
+          <button
+            onClick={fetchProducts}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-white"
+          >
+            Retry
+          </button>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Header */}
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <h1 className="text-xl font-bold text-slate-900">
-            Product Admin
-          </h1>
+      <Navbar />
 
-          <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              window.location.href = "/login";
-            }}
-            className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-6">
 
-        {/* Title */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">
-            Products
-          </h2>
+<div className="mb-6 flex items-center justify-between">
+  <div>
+    <h1 className="text-2xl font-bold text-slate-900">
+      Products
+    </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
-            Manage your products
-          </p>
+    <p className="mt-1 text-sm text-slate-500">
+      Manage your products
+    </p>
+  </div>
+
+  <button
+    onClick={() => navigate("/products/add")}
+    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+  >
+    + Add Product
+  </button>
+</div>
+
+        {/* Controls */}
+        <div className="mb-5 rounded-xl border bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+            <SearchBar
+              value={searchInput}
+              onChange={setSearchInput}
+            />
+
+            <Filters
+              category={category}
+              categories={categories}
+              sort={sort}
+              pageSize={String(limit)}
+              searchActive={Boolean(search)}
+              onCategoryChange={(value) => {
+                updateParam(
+                  "category",
+                  value
+                );
+              }}
+              onSortChange={(value) => {
+                updateParam(
+                  "sort",
+                  value
+                );
+              }}
+              onPageSizeChange={(value) => {
+                updateParam(
+                  "limit",
+                  value
+                );
+              }}
+            />
+
+          </div>
+
+          {search && (
+            <p className="mt-3 text-sm text-slate-500">
+              Searching for:{" "}
+              <span className="font-medium text-slate-900">
+                {search}
+              </span>
+            </p>
+          )}
+
+          {category && !search && (
+            <p className="mt-3 text-sm text-slate-500">
+              Category:{" "}
+              <span className="font-medium text-slate-900">
+                {category}
+              </span>
+            </p>
+          )}
         </div>
 
-        {/* Search + Page Size */}
-        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Empty State */}
+        {products.length === 0 ? (
+          <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+            <h2 className="text-lg font-semibold">
+              No products found
+            </h2>
 
-          {/* Search */}
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search products..."
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-500 md:max-w-md"
-          />
+            <p className="mt-2 text-sm text-slate-500">
+              Try changing your search or filters.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop */}
+            <ProductTable
+              products={products}
+            />
 
-          {/* Page Size */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600">
-              Page Size:
-            </label>
+            {/* Mobile */}
+            <div className="space-y-3 md:hidden">
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                />
+              ))}
+            </div>
 
-            <select
-              value={limit}
-              onChange={(e) =>
-                changeLimit(e.target.value)
+            {/* Pagination info */}
+            <div className="mt-4 text-sm text-slate-500">
+              Showing {start}–{end} of{" "}
+              {total}
+            </div>
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(newPage) =>
+                updateParam(
+                  "page",
+                  String(newPage),
+                  false
+                )
               }
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2"
-            >
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="50">50</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Product Table */}
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left">
-
-              <thead className="border-b bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-sm font-semibold">
-                    Image
-                  </th>
-
-                  <th className="px-4 py-3 text-sm font-semibold">
-                    Title
-                  </th>
-
-                  <th className="px-4 py-3 text-sm font-semibold">
-                    Category
-                  </th>
-
-                  <th className="px-4 py-3 text-sm font-semibold">
-                    Price
-                  </th>
-
-                  <th className="px-4 py-3 text-sm font-semibold">
-                    Rating
-                  </th>
-
-                  <th className="px-4 py-3 text-sm font-semibold">
-                    Stock
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y">
-                {products.length > 0 ? (
-                  products.map((product) => (
-                    <tr key={product.id}>
-
-                      <td className="px-4 py-3">
-                        <img
-                          src={product.thumbnail}
-                          alt={product.title}
-                          className="h-12 w-12 rounded-lg object-cover"
-                        />
-                      </td>
-
-                      <td className="px-4 py-3 font-medium">
-                        {product.title}
-                      </td>
-
-                      <td className="px-4 py-3 capitalize text-slate-600">
-                        {product.category}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        ${product.price}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        ⭐ {product.rating}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        {product.stock}
-                      </td>
-
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-4 py-10 text-center text-slate-500"
-                    >
-                      No products found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination Info */}
-        <div className="mt-4 text-sm text-slate-500">
-          Showing {start}–{end} of {total}
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-
-          <button
-            disabled={page === 1}
-            onClick={() => changePage(page - 1)}
-            className="rounded border bg-white px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Previous
-          </button>
-
-          {Array.from(
-            { length: totalPages },
-            (_, index) => index + 1
-          )
-            .slice(0, 10)
-            .map((pageNumber) => (
-              <button
-                key={pageNumber}
-                onClick={() => changePage(pageNumber)}
-                className={`rounded px-3 py-2 ${
-                  page === pageNumber
-                    ? "bg-slate-900 text-white"
-                    : "border bg-white"
-                }`}
-              >
-                {pageNumber}
-              </button>
-            ))}
-
-          <button
-            disabled={page === totalPages || totalPages === 0}
-            onClick={() => changePage(page + 1)}
-            className="rounded border bg-white px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next
-          </button>
-
-        </div>
-
+            />
+          </>
+        )}
       </main>
     </div>
   );

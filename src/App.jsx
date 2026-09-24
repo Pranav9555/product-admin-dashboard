@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import Login from "./Pages/Login";
 import "./App.css";
+import ProductDetails from "./pages/ProductDetails";
+import EditProduct from "./pages/EditProduct";
+import AddProduct from "./pages/AddProduct";
+import Login from "./Pages/Login";
 import Products from "./Pages/Products";
 
 function ProtectedRoute({ children }) {
@@ -27,9 +30,35 @@ function App() {
         }
       />
 
+      <Route
+        path="/products/:id"
+        element={
+          <ProtectedRoute>
+            <ProductDetails />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route
+        path="/products/add"
+        element={
+          <ProtectedRoute>
+            <AddProduct />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/products/:id/edit"
+        element={
+          <ProtectedRoute>
+            <EditProduct />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }
