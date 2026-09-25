@@ -1,16 +1,50 @@
-# React + Vite
+# Product Admin Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A responsive product management dashboard built with **React, Vite, Tailwind CSS, Axios, and React Router**, using the DummyJSON API.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+* 🔐 Login & protected routes
+* 📦 Product listing and product details
+* 🔎 Search with debounce
+* 🏷️ Category filter
+* ↕️ Sort by price, rating, and title
+* 📄 Pagination with 10/20/50 page sizes
+* ➕ Add product
+* ✏️ Edit product
+* 🗑️ Delete product with confirmation
+* 📱 Responsive desktop and mobile UI
+* ⚠️ Loading, empty, and error states
+* 💾 LocalStorage for CRUD changes
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+git clone <your-repository-url>
+cd product-admin-dashboard
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Build for production:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run build
+```
+
+## Test Login
+
+```text
+Username: emilys
+Password: emilyspass
+```
+
+## API
+
+[DummyJSON](https://dummyjson.com)
+
+> DummyJSON mutations are not persistent, so local changes are stored in LocalStorage.
+
+## Tech Stack
+
+**React • Vite • Tailwind CSS • Axios • React Router**
