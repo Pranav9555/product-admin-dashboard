@@ -4,12 +4,13 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
-
 import Login from "./pages/Login";
-import Products from "./pages/Products";
-import ProductDetails from "./pages/ProductDetails";
-import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
+import AddProduct from "./pages/AddProduct";
+import ProductDetails from "./pages/ProductDetails";
+import Products from "./Pages/Products";
+
+
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
