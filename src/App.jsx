@@ -4,10 +4,10 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
-import Login from "./pages/Login";
-import EditProduct from "./pages/EditProduct";
-import AddProduct from "./pages/AddProduct";
-import ProductDetails from "./pages/ProductDetails";
+import Login from "./Pages/Login";
+import EditProduct from "./Pages/EditProduct";
+import AddProduct from "./Pages/AddProduct";
+import ProductDetails from "./Pages/ProductDetails";
 import Products from "./Pages/Products";
 
 
