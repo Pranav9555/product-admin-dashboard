@@ -35,21 +35,20 @@ function ProductDetails() {
         setLoading(true);
         setError("");
 
-        // Check if product was deleted locally
-        if (isProductDeleted(id)) {
-          setError("Product not found.");
-          return;
-        }
 
-        // First check locally created product
-        const localProduct =
-          getLocalProductById(id);
+// First check locally created product
+const localProduct = getLocalProductById(id);
 
-        if (localProduct) {
-          setProduct(localProduct);
-          return;
-        }
+if (localProduct) {
+  setProduct(localProduct);
+  return;
+}
 
+// Check if server product was deleted locally
+if (isProductDeleted(id)) {
+  setError("Product not found.");
+  return;
+}
         // Otherwise get product from API
         const data = await getProductById(id);
 
